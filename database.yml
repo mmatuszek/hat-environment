@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hat-postgres
+spec:
+  type: NodePort
+  ports:
+  - name: pgql
+    port: 5431
+    targetPort: 5432
+    protocol: TCP
+    nodePort: 30531
+  selector:
+    app: hat-postgres-container
+
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: hat-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hat-postgres-container
+  template:
+    metadata:
+      labels:
+        app: hat-postgres-container
+        tier: backend
+    spec:
+      containers:
+        - name: hat-postgres-container
+          image: postgres:9.6.6
+          env:
+            - name: POSTGRES_USER
+              value: hat
+
+            - name: POSTGRES_PASSWORD
+              value: wakacje2018
+
+            - name: POSTGRES_DB
+              value: hat
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: hat-postgres-volume-mount
+              mountPath: /var/lib/postgresql/data
+
+      volumes:
+        - name: hat-postgres-volume-mount
+          persistentVolumeClaim:
+            claimName: hat-postgres-pvc
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: hat-postgres-pvc
+  labels:
+    type: local
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  volumeName: hat-postgres-pv
+
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: hat-postgres-pv
+  labels:
+    type: local
+spec:
+  storageClassName: hostpath
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /HAT/data/postgres
